@@ -16,10 +16,14 @@ Spree::Address.class_eval do
   end
 
 
-  def self.assign_address_to_order(address, order)
+  def self.assign_address_to_order(address, order, user)
     if  order.present? && (order.ship_address.blank? || order.bill_address.blank?)
       order.bill_address_id = address.id
       order.ship_address_id = address.id
+    end
+
+    if (user.addresses.present? && user.addresses.count == 1)
+      user.update(ship_address_id: address.id, bill_address_id: address.id)
     end
   end
 
@@ -27,8 +31,11 @@ Spree::Address.class_eval do
     begin
       if order.present? || order.shipping_address.present?
         order.shipping_address = address
-        order.create_proposed_shipments
-        order.update_with_updater!
+        if order.state != 'address'
+          order.update(state: "address")
+        end
+        order.next
+        order.update(state: "address")
       end
     rescue
     end
